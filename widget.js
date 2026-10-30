@@ -405,7 +405,7 @@ document.addEventListener('click', (e) => {
     }
 
     // Met à jour le nombre de résultats et applique les filtres à Grist
-    resultsCount.textContent = `🔢 Résultats: ${filtered.length}`;
+    resultsCount.textContent = `Résultats: ${filtered.length}`;
     grist.setSelectedRows(filtered.map(r => r.id));
     updateDisabledOptions(filtered);
 
