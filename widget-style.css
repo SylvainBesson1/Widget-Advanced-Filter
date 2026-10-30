@@ -1,270 +1,321 @@
-/* Style global pour le corps de la page */
+/* ===== Variables de thème (inspirées de la page Mentions légales) ===== */
+:root {
+  --red: #951b1e;              /* Rouge bordeaux des titres */
+  --red-dark: #741416;         /* Rouge au survol */
+  --red-light: #fbeeee;        /* Fond rouge très clair */
+  --text: #333333;             /* Texte principal */
+  --text-muted: #6b6b6b;       /* Texte secondaire */
+  --border: #dcdcdc;           /* Bordures */
+  --bg-soft: #f5f5f5;          /* Fond gris très clair */
+
+  /* Variables utilisées par widget.js (boutons Tout / Aucun, modale) */
+  --color-background-info: var(--red-light);
+  --color-text-info: var(--red);
+  --color-border-info: var(--red);
+  --color-background-secondary: var(--bg-soft);
+  --color-text-secondary: var(--text-muted);
+  --color-border-secondary: var(--border);
+  --color-text-tertiary: #9a9a9a;
+}
+
+/* ===== Base ===== */
 body {
-  background: #f3f4f6; /* Couleur de fond claire pour un aspect moderne */
-  font-family: sans-serif; /* Police sans empattement pour une meilleure lisibilité */
-  padding: 20px; /* Espacement interne pour éviter que le contenu ne colle aux bords */
+  background: #ffffff;
+  color: var(--text);
+  font-family: 'Roboto', Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  padding: 20px 20px 20px 24px;
+  margin: 0;
+  border-left: 3px solid var(--red); /* Petite barre rouge à gauche */
 }
 
-/* Style pour le conteneur des actions de filtrage (boutons, recherche, etc.) */
+/* ===== Barre d'actions ===== */
 #filters-actions {
-  display: flex; /* Utilise Flexbox pour un alignement horizontal */
-  gap: 10px; /* Espacement entre les éléments enfants */
-  align-items: center; /* Aligne verticalement les éléments au centre */
-  margin-bottom: 10px; /* Espacement en bas pour séparer des autres éléments */
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 16px;
 }
 
-/* Style pour le compteur de résultats */
 #results-count {
-  font-weight: 600; /* Texte en gras pour une meilleure visibilité */
-  margin-left: auto; /* Pousse le compteur à droite dans le conteneur flex */
+  font-weight: 700;
+  color: var(--red);
+  margin-left: auto;
 }
 
-/* Style pour le conteneur principal des filtres */
+/* ===== Conteneur principal ===== */
 #filters-container {
-  display: flex; /* Utilise Flexbox pour organiser les enfants verticalement */
-  flex-direction: column; /* Direction verticale pour les enfants */
-  gap: 12px; /* Espacement entre les enfants */
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-/* Style pour les groupes de tags */
+/* ===== Groupes de tags ===== */
 .tag-group {
-  margin-bottom: 8px; /* Espacement en bas pour séparer des autres groupes */
+  margin-bottom: 10px;
 }
 
-/* Style pour le titre des groupes de tags */
 .tag-title {
-  font-weight: 600; /* Texte en gras */
-  font-size: 13px; /* Taille de police légèrement réduite */
-  margin-bottom: 4px; /* Espacement en bas pour séparer du contenu */
-  color: #374151; /* Couleur de texte gris foncé pour un bon contraste */
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text);
+  margin-bottom: 4px;
 }
 
-/* Style pour les lignes de tags */
 .tag-row {
-  display: flex; /* Utilise Flexbox pour organiser les tags horizontalement */
-  flex-wrap: wrap; /* Permet aux tags de passer à la ligne si nécessaire */
-  gap: 6px; /* Espacement entre les tags */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-/* Style pour les tags individuels */
+/* ===== Tags (pastilles) ===== */
 .tag {
-  padding: 5px 12px; /* Espacement interne pour un aspect confortable */
-  border-radius: 999px; /* Bordure arrondie pour un aspect "pill" */
-  background: #eef2ff; /* Fond bleu clair */
-  color: #3730a3; /* Texte bleu foncé pour un bon contraste */
-  cursor: pointer; /* Curseur en forme de main pour indiquer que c'est cliquable */
-  font-size: 12px; /* Taille de police réduite */
-  transition: all 0.2s; /* Animation fluide pour les changements d'état */
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--text);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
 }
 
-/* Style pour le survol des tags */
 .tag:hover {
-  background: #c7d2fe; /* Fond bleu plus clair au survol */
-  transform: translateY(-1px); /* Légère élévation pour un effet 3D */
+  background: var(--red-light);
+  border-color: var(--red);
+  color: var(--red);
 }
 
-/* Style pour les tags actifs (sélectionnés) */
 .tag.active {
-  background: linear-gradient(135deg, #3b82f6, #6366f1); /* Dégradé bleu pour un effet moderne */
-  color: white; /* Texte blanc pour un bon contraste */
-  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3); /* Ombre pour un effet de profondeur */
+  background: var(--red);
+  border-color: var(--red);
+  color: #ffffff;
+  font-weight: 500;
 }
 
-/* Style pour les tags désactivés (non disponibles) */
 .tag.disabled {
-  opacity: 0.4; /* Réduit l'opacité pour indiquer la désactivation */
-  pointer-events: none; /* Désactive les interactions */
+  opacity: 0.35;
+  pointer-events: none;
 }
 
-/* Style pour le conteneur des filtres dynamiques (selects) */
+/* ===== Filtres de type select ===== */
 #dynamic-filters {
-  display: flex; /* Utilise Flexbox pour organiser les enfants horizontalement */
-  flex-wrap: wrap; /* Permet aux enfants de passer à la ligne si nécessaire */
-  gap: 12px; /* Espacement entre les enfants */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
-/* Style pour les cartes de filtres (conteneurs des selects) */
 .filter-card {
-  background: white; /* Fond blanc */
-  border-radius: 14px; /* Coins arrondis */
-  padding: 10px; /* Espacement interne */
-  min-width: 160px; /* Largeur minimale */
-  max-width: 320px; /* Largeur maximale */
-  width: fit-content; /* Largeur ajustée au contenu */
-  flex: 1 1 auto; /* Permet une croissance flexible */
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06); /* Ombre légère pour un effet de profondeur */
-  transition: all 0.2s ease; /* Animation fluide pour les changements d'état */
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  min-width: 160px;
+  max-width: 320px;
+  width: fit-content;
+  flex: 1 1 auto;
+  transition: all 0.2s ease;
 }
 
-/* Effet de survol pour les cartes de filtres */
 .filter-card:hover {
-  transform: translateY(-2px); /* Légère élévation pour un effet 3D */
+  border-color: var(--red);
 }
 
-/* Style pour le titre des cartes de filtres */
 .filter-title {
-  font-size: 12px; /* Taille de police réduite */
-  font-weight: 600; /* Texte en gras */
-  margin-bottom: 6px; /* Espacement en bas pour séparer du contenu */
-  color: #6b7280; /* Couleur de texte gris moyen */
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--text);
 }
 
-/* Style pour les éléments select multiples */
 .filter-multi {
-  width: 100%; /* Largeur maximale */
-  max-width: 100%; /* Largeur maximale */
-  height: 110px; /* Hauteur fixe pour permettre le défilement */
-  border-radius: 10px; /* Coins arrondis */
-  border: none; /* Pas de bordure */
-  background: #f9fafb; /* Fond gris très clair */
-  padding: 6px; /* Espacement interne */
-  font-size: 12px; /* Taille de police réduite */
-  overflow-x: auto; /* Défilement horizontal si nécessaire */
-  white-space: nowrap; /* Empêche le retour à la ligne */
+  width: 100%;
+  max-width: 100%;
+  height: 110px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  color: var(--text);
+  padding: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  overflow-x: auto;
+  white-space: nowrap;
 }
 
-/* Style pour les options des selects */
+.filter-multi:focus {
+  outline: none;
+  border-color: var(--red);
+}
+
 .filter-multi option {
-  padding: 4px; /* Espacement interne */
-  border-radius: 6px; /* Coins légèrement arrondis */
+  padding: 4px;
+  border-radius: 4px;
 }
 
-/* Style pour les options sélectionnées */
 .filter-multi option:checked {
-  background: #3b82f6; /* Fond bleu */
-  color: white; /* Texte blanc */
+  background: var(--red);
+  color: #ffffff;
 }
 
-/* Style pour le champ de recherche globale */
+/* ===== Recherche globale ===== */
 #global-search {
-  padding: 8px 12px; /* Espacement interne */
-  border-radius: 12px; /* Coins arrondis */
-  border: none; /* Pas de bordure */
-  background: white; /* Fond blanc */
-  box-shadow: inset 0 0 0 1px #e5e7eb; /* Bordure subtile */
-  font-size: 14px; /* Taille de police standard */
-  transition: 0.2s; /* Animation fluide pour les changements d'état */
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  transition: 0.2s;
 }
 
-/* Style pour le champ de recherche globale au focus */
 #global-search:focus {
-  box-shadow: inset 0 0 0 2px #3b82f6; /* Bordure bleue au focus */
+  outline: none;
+  border-color: var(--red);
+  box-shadow: 0 0 0 2px rgba(149, 27, 30, 0.15);
 }
 
-/* Style de base pour les boutons */
+/* ===== Boutons ===== */
 button {
-  border-radius: 12px; /* Coins arrondis */
-  padding: 8px 14px; /* Espacement interne */
-  font-weight: 600; /* Texte en gras */
-  font-size: 13px; /* Taille de police légèrement réduite */
-  border: none; /* Pas de bordure */
-  cursor: pointer; /* Curseur en forme de main */
-  transition: all 0.2s ease; /* Animation fluide pour les changements d'état */
+  font-family: inherit;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-weight: 500;
+  font-size: 13px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-/* Style pour le bouton "Appliquer les filtres" */
-#apply-filters {
-  background: linear-gradient(135deg, #3b82f6, #6366f1); /* Dégradé bleu */
-  color: white; /* Texte blanc */
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); /* Ombre pour un effet de profondeur */
+/* !important : écrase les styles inline présents dans le HTML */
+#manage-filters-btn {
+  background-color: var(--red) !important;
+  color: #ffffff !important;
+  border-radius: 8px !important;
+  font-weight: 500 !important;
 }
 
-/* Effet de survol pour le bouton "Appliquer les filtres" */
-#apply-filters:hover {
-  transform: translateY(-2px); /* Légère élévation */
-  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.4); /* Ombre plus marquée */
+#manage-filters-btn:hover {
+  background-color: var(--red-dark) !important;
 }
 
-/* Style pour le bouton "Réinitialiser les filtres" */
 #reset-filters {
-  background: #f3f4f6; /* Fond gris clair */
-  color: #374151; /* Texte gris foncé */
+  background-color: #ffffff !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  font-weight: 500 !important;
 }
 
-/* Effet de survol pour le bouton "Réinitialiser les filtres" */
 #reset-filters:hover {
-  background-color: #2563eb; /* Fond bleu au survol */
-  transform: translateY(-1px); /* Légère élévation */
+  background-color: var(--red-light) !important;
+  border-color: var(--red) !important;
+  color: var(--red) !important;
 }
 
-/* Style pour la modale (fenêtre de dialogue) */
+#select-all,
+#deselect-all,
+#close-modal {
+  background: #ffffff !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
+
+#select-all:hover,
+#deselect-all:hover,
+#close-modal:hover {
+  background: var(--red-light) !important;
+  border-color: var(--red) !important;
+  color: var(--red) !important;
+}
+
+/* ===== Modale ===== */
 .modal {
-  display: none; /* Masquée par défaut */
-  position: fixed; /* Position fixe par rapport à la fenêtre */
-  top: 0; /* Position en haut */
-  left: 0; /* Position à gauche */
-  width: 100%; /* Largeur maximale */
-  height: 100%; /* Hauteur maximale */
-  background: rgba(0, 0, 0, 0.5); /* Fond semi-transparent */
-  z-index: 1000; /* Position au-dessus des autres éléments */
-  justify-content: center; /* Centre horizontalement */
-  align-items: center; /* Centre verticalement */
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
 }
 
-/* Style pour le contenu de la modale */
 .modal-content {
-  background: white; /* Fond blanc */
-  padding: 20px; /* Espacement interne */
-  border-radius: 12px; /* Coins arrondis */
-  width: 80%; /* Largeur relative */
-  max-width: 600px; /* Largeur maximale */
-  max-height: 80vh; /* Hauteur maximale */
-  overflow-y: auto; /* Défilement vertical si nécessaire */
+  background: #ffffff;
+  padding: 24px;
+  border-radius: 8px;
+  border-top: 4px solid var(--red);
+  width: 80%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
-/* Style pour les groupes de cases à cocher */
+.modal-content h3 {
+  color: var(--red);
+  font-size: 20px !important;
+  font-weight: 700 !important;
+}
+
 .checkbox-group {
-  display: flex; /* Utilise Flexbox pour organiser les enfants verticalement */
-  flex-direction: column; /* Direction verticale */
-  gap: 8px; /* Espacement entre les enfants */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-/* Style pour les éléments de case à cocher */
 .checkbox-item {
-  display: flex; /* Utilise Flexbox pour organiser les enfants horizontalement */
-  align-items: center; /* Alignement vertical au centre */
-  gap: 8px; /* Espacement entre les enfants */
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-/* Style pour les cases à cocher */
+.checkbox-item:hover {
+  background: var(--bg-soft);
+}
+
 .checkbox-item input[type="checkbox"] {
-  margin: 0; /* Pas de marg */
+  margin: 0;
+  accent-color: var(--red);
 }
 
-/* Style pour les libellés des cases à cocher */
 .checkbox-item label {
-  font-size: 14px; /* Taille de police standard */
-  color: #374151; /* Couleur de texte gris foncé */
-  cursor: pointer; /* Curseur en forme de main */
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
 }
 
-/* Style pour les grandes flèches (émojis) */
 .large-arrow {
-  font-size: 1.1em; /* Taille légèrement augmentée */
-  vertical-align: middle; /* Alignement vertical */
-  margin-right: 5px; /* Espacement à droite */
+  font-size: 1.1em;
+  vertical-align: middle;
+  margin-right: 5px;
 }
 
-/* Liste déroulante pour les tags (> 10 choix) */
+/* ===== Liste déroulante pour les tags (> 10 choix) ===== */
 .tag-dropdown {
   position: relative;
   display: inline-block;
 }
 
 .dd-toggle {
-  background: white;
-  color: #374151;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  min-width: 180px;
+  background: #ffffff;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 400;
+  min-width: 190px;
   text-align: left;
 }
 
 .dd-toggle:hover {
-  background: #eef2ff;
+  background: var(--red-light);
+  border-color: var(--red);
 }
 
 .dd-panel {
@@ -272,11 +323,12 @@ button {
   top: calc(100% + 4px);
   left: 0;
   z-index: 100;
-  min-width: 240px;
+  min-width: 250px;
   max-height: 260px;
   overflow-y: auto;
-  background: white;
-  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
   padding: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
@@ -286,27 +338,37 @@ button {
   box-sizing: border-box;
   margin-bottom: 6px;
   padding: 6px 10px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.dd-search:focus {
+  outline: none;
+  border-color: var(--red);
 }
 
 .dd-option {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 6px;
-  border-radius: 6px;
-  font-size: 12px;
-  color: #374151;
+  padding: 5px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text);
   cursor: pointer;
 }
 
+.dd-option input {
+  accent-color: var(--red);
+}
+
 .dd-option:hover {
-  background: #eef2ff;
+  background: var(--red-light);
 }
 
 .dd-option.disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   pointer-events: none;
 }
