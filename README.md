@@ -69,7 +69,8 @@ This widget allows you to add dynamic and customizable filters to your Grist doc
 
 1. **Copy the widget address**:
 
-   https://sylvainbesson1.github.io/Widget-drop-down-filter/
+[https://sylvainbesson1.github.io/Widget-drop-down-filter/
+](https://sylvainbesson1.github.io/Widget-Advanced-Filter/)
 
 2. **Paste the address into custom widgets**:
    - Click on "New"
