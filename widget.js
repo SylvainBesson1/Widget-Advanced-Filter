@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let selectedTags = {};        // Stocke les tags sélectionnés pour chaque colonne de type "tag"
   let selectEls = {};           // Stocke les éléments <select> pour chaque colonne de type "select"
   const STORAGE_KEY = 'grist_filters_state'; // Clé pour sauvegarder l'état des filtres dans localStorage
+  const DROPDOWN_THRESHOLD = 10; // Au-delà, on affiche une liste déroulante
   let tagColumns = {};          // Stocke les colonnes de type "tag" (ChoiceList ou RefList)
   let selectColumns = {};       // Stocke les colonnes de type "select" (Choice ou Ref)
   let visibleFilters = { tags: true }; // Stocke la visibilité des filtres (par défaut, les tags sont visibles)
@@ -22,6 +23,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const filterCheckboxesContainer = document.getElementById('filter-checkboxes'); // Conteneur pour les cases à cocher de gestion des filtres
   const selectAllBtn = document.getElementById('select-all');           // Bouton pour tout sélectionner
   const deselectAllBtn = document.getElementById('deselect-all');     // Bouton pour tout désélectionner
+
+  // Ferme les listes déroulantes quand on clique ailleurs
+document.addEventListener('click', (e) => {
+  document.querySelectorAll('.dd-panel').forEach(panel => {
+    if (!panel.parentElement.contains(e.target)) panel.style.display = 'none';
+  });
+});
 
   // Fonction utilitaire pour nettoyer les valeurs Grist (retire le marqueur "L" des ChoiceList)
   const cleanVal = (v) => {
@@ -182,7 +190,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const uniqueValues = [...new Set(records.flatMap(r => cleanVal(r[col])))];
       if (!selectedTags[col]) selectedTags[col] = [];
 
-      // Met à jour le style des boutons "Tout" et "Aucun"
+      
+           const useDropdown = uniqueValues.length > DROPDOWN_THRESHOLD;
+      let ddToggle = null;
+
+      // Met à jour le style des boutons "Tout" et "Aucun" (et le libellé du menu déroulant)
       const updateBtnStyles = () => {
         const allSelected = uniqueValues.every(v => selectedTags[col].includes(v));
         const noneSelected = selectedTags[col].length === 0;
@@ -190,28 +202,112 @@ document.addEventListener('DOMContentLoaded', () => {
         btnAll.style.opacity = allSelected ? '1' : '0.6';
         btnNone.style.fontWeight = noneSelected ? '600' : '400';
         btnNone.style.opacity = noneSelected ? '1' : '0.6';
+        if (ddToggle) {
+          const n = selectedTags[col].length;
+          ddToggle.textContent = (n === 0 ? '— Tous —' : `${n} sélectionné${n > 1 ? 's' : ''}`) + ' ▾';
+        }
       };
 
-      // Crée un tag pour chaque valeur unique
-      uniqueValues.forEach(val => {
-        const tag = document.createElement('span');
-        tag.className = 'tag';
-        tag.textContent = val;
-        // Si le tag est sélectionné, ajoute la classe "active"
-        if (selectedTags[col].includes(val)) tag.classList.add('active');
-        // Ajoute un écouteur pour la sélection/désélection
-        tag.addEventListener('click', () => {
-          if (selectedTags[col].includes(val)) {
-            selectedTags[col] = selectedTags[col].filter(v => v !== val);
-            tag.classList.remove('active');
-          } else {
-            selectedTags[col].push(val);
-            tag.classList.add('active');
-          }
-          updateBtnStyles();
-          applyFilters();
+      if (!useDropdown) {
+        // ===== Mode pastilles (≤ 10 valeurs) =====
+        uniqueValues.forEach(val => {
+          const tag = document.createElement('span');
+          tag.className = 'tag';
+          tag.textContent = val;
+          if (selectedTags[col].includes(val)) tag.classList.add('active');
+          tag.addEventListener('click', () => {
+            if (selectedTags[col].includes(val)) {
+              selectedTags[col] = selectedTags[col].filter(v => v !== val);
+              tag.classList.remove('active');
+            } else {
+              selectedTags[col].push(val);
+              tag.classList.add('active');
+            }
+            updateBtnStyles();
+            applyFilters();
+          });
+          row.appendChild(tag);
         });
-        row.appendChild(tag);
+      } else {
+        // ===== Mode liste déroulante (> 10 valeurs) =====
+        const dd = document.createElement('div');
+        dd.className = 'tag-dropdown';
+
+        ddToggle = document.createElement('button');
+        ddToggle.type = 'button';
+        ddToggle.className = 'dd-toggle';
+
+        const panel = document.createElement('div');
+        panel.className = 'dd-panel';
+        panel.style.display = 'none';
+
+        // Champ de recherche dans la liste
+        const ddSearch = document.createElement('input');
+        ddSearch.type = 'text';
+        ddSearch.className = 'dd-search';
+        ddSearch.placeholder = 'Rechercher...';
+        ddSearch.addEventListener('input', () => {
+          const q = ddSearch.value.toLowerCase();
+          panel.querySelectorAll('.dd-option').forEach(o => {
+            o.style.display = o.dataset.value.toLowerCase().includes(q) ? 'flex' : 'none';
+          });
+        });
+        panel.appendChild(ddSearch);
+
+        uniqueValues.forEach(val => {
+          const opt = document.createElement('label');
+          opt.className = 'dd-option';
+          opt.dataset.value = val;
+
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.checked = selectedTags[col].includes(val);
+          cb.addEventListener('change', () => {
+            if (cb.checked) {
+              if (!selectedTags[col].includes(val)) selectedTags[col].push(val);
+            } else {
+              selectedTags[col] = selectedTags[col].filter(v => v !== val);
+            }
+            updateBtnStyles();
+            applyFilters();
+          });
+
+          const txt = document.createElement('span');
+          txt.textContent = val;
+
+          opt.appendChild(cb);
+          opt.appendChild(txt);
+          panel.appendChild(opt);
+        });
+
+        ddToggle.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const open = panel.style.display === 'block';
+          document.querySelectorAll('.dd-panel').forEach(p => p.style.display = 'none');
+          panel.style.display = open ? 'none' : 'block';
+          if (!open) ddSearch.focus();
+        });
+
+        dd.appendChild(ddToggle);
+        dd.appendChild(panel);
+        row.appendChild(dd);
+      }
+
+      // Écouteurs pour les boutons "Tout" et "Aucun"
+      btnAll.addEventListener('click', () => {
+        selectedTags[col] = [...uniqueValues];
+        row.querySelectorAll('.tag').forEach(t => t.classList.add('active'));
+        row.querySelectorAll('.dd-option input').forEach(c => c.checked = true);
+        updateBtnStyles();
+        applyFilters();
+      });
+
+      btnNone.addEventListener('click', () => {
+        selectedTags[col] = [];
+        row.querySelectorAll('.tag').forEach(t => t.classList.remove('active'));
+        row.querySelectorAll('.dd-option input').forEach(c => c.checked = false);
+        updateBtnStyles();
+        applyFilters();
       });
 
       // Écouteurs pour les boutons "Tout" et "Aucun"
@@ -322,12 +418,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // Met à jour les options désactivées (pour les valeurs non disponibles après filtrage)
   function updateDisabledOptions(filtered) {
     // Désactive les tags non disponibles
-    Object.keys(tagColumns).forEach(col => {
+        Object.keys(tagColumns).forEach(col => {
       const counts = countValues(filtered, col);
       tagContainer.querySelectorAll('.tag-group').forEach(group => {
         if (group.querySelector('.tag-title')?.textContent !== tagColumns[col]) return;
         group.querySelectorAll('.tag').forEach(tag => {
           tag.classList.toggle('disabled', !counts[tag.textContent]);
+        });
+        group.querySelectorAll('.dd-option').forEach(opt => {
+          const unavailable = !counts[opt.dataset.value];
+          opt.classList.toggle('disabled', unavailable);
+          opt.querySelector('input').disabled = unavailable;
         });
       });
     });

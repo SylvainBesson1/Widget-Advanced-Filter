@@ -245,3 +245,68 @@ button {
   margin-right: 5px; /* Espacement à droite */
 }
 
+/* Liste déroulante pour les tags (> 10 choix) */
+.tag-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dd-toggle {
+  background: white;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  min-width: 180px;
+  text-align: left;
+}
+
+.dd-toggle:hover {
+  background: #eef2ff;
+}
+
+.dd-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 100;
+  min-width: 240px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: white;
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.dd-search {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 6px;
+  padding: 6px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.dd-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #374151;
+  cursor: pointer;
+}
+
+.dd-option:hover {
+  background: #eef2ff;
+}
+
+.dd-option.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
