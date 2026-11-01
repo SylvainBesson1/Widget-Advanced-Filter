@@ -85,20 +85,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const rawSectionId = tableRef.rawViewSectionRef ? tableRef.rawViewSectionRef[tableIdx] : null;
 
-      const sectionIds = new Set(
-        sectionTable.id.filter((id, i) =>
-          sectionTable.tableRef[i] === parentRef &&
-          id !== rawSectionId &&
-          sectionTable.parentKey[i] !== 'custom'   // ignore les widgets personnalisés (dont celui-ci)
-        )
-      );
+      // Toutes les sections de la table, hors données brutes
+      const tableSections = sectionTable.id
+        .map((id, i) => ({ id, parentKey: sectionTable.parentKey[i], tableRef: sectionTable.tableRef[i] }))
+        .filter(s => s.tableRef === parentRef && s.id !== rawSectionId);
 
-      // Si aucun autre widget n'existe sur cette table, on ne filtre pas
-      if (sectionIds.size > 0) {
-        visibleColRefs = new Set(
-          fieldTable.colRef.filter((_, i) => sectionIds.has(fieldTable.parentId[i]))
-        );
-      }
+      // Colonnes ayant un champ dans un ensemble de sections
+      const colsOf = (sections) => {
+        const ids = new Set(sections.map(s => s.id));
+        return new Set(fieldTable.colRef.filter((_, i) => ids.has(fieldTable.parentId[i])));
+      };
+
+      // 1) On privilégie les widgets personnalisés (ce widget) : ses colonnes cachées sont celles à exclure
+      const customCols = colsOf(tableSections.filter(s => s.parentKey === 'custom'));
+      // 2) Sinon on se rabat sur l'ensemble des widgets de la table
+      const allCols = colsOf(tableSections);
+
+      if (customCols.size > 0) visibleColRefs = customCols;
+      else if (allCols.size > 0) visibleColRefs = allCols;
+
+      console.log('Colonnes visibles (colRef) :', visibleColRefs ? [...visibleColRefs] : 'aucun filtrage');
     } catch (e) {
       console.warn('Impossible de lire les champs visibles, aucun filtrage par visibilité :', e);
     }
@@ -689,7 +695,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initOrder();
     applyOrder();
 
-    resultsCount.textContent = `Résultats: ${allRecords.length}`;
+    resultsCount.textContent = `🔢 Résultats: ${allRecords.length}`;
     grist.setSelectedRows(allRecords.map(r => r.id));
 
     restoreState();
