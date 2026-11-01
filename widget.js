@@ -25,11 +25,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const deselectAllBtn = document.getElementById('deselect-all');     // Bouton pour tout désélectionner
 
   // Ferme les listes déroulantes quand on clique ailleurs
-document.addEventListener('click', (e) => {
-  document.querySelectorAll('.dd-panel').forEach(panel => {
-    if (!panel.parentElement.contains(e.target)) panel.style.display = 'none';
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll('.dd-panel').forEach(panel => {
+      if (!panel.parentElement.contains(e.target)) panel.style.display = 'none';
+    });
   });
-});
 
   // Fonction utilitaire pour nettoyer les valeurs Grist (retire le marqueur "L" des ChoiceList)
   const cleanVal = (v) => {
@@ -75,6 +75,34 @@ document.addEventListener('click', (e) => {
     }
     const parentRef = tableRef.id[tableIdx];
 
+    // ===== Colonnes visibles dans les widgets de la table =====
+    // Une colonne masquée dans un widget n'a simplement pas de "champ" dans la section.
+    // On récupère donc les champs des sections (hors données brutes et hors ce widget personnalisé).
+    let visibleColRefs = null; // null = pas de filtrage par visibilité (repli)
+    try {
+      const sectionTable = await grist.docApi.fetchTable('_grist_Views_section');
+      const fieldTable   = await grist.docApi.fetchTable('_grist_Views_section_field');
+
+      const rawSectionId = tableRef.rawViewSectionRef ? tableRef.rawViewSectionRef[tableIdx] : null;
+
+      const sectionIds = new Set(
+        sectionTable.id.filter((id, i) =>
+          sectionTable.tableRef[i] === parentRef &&
+          id !== rawSectionId &&
+          sectionTable.parentKey[i] !== 'custom'   // ignore les widgets personnalisés (dont celui-ci)
+        )
+      );
+
+      // Si aucun autre widget n'existe sur cette table, on ne filtre pas
+      if (sectionIds.size > 0) {
+        visibleColRefs = new Set(
+          fieldTable.colRef.filter((_, i) => sectionIds.has(fieldTable.parentId[i]))
+        );
+      }
+    } catch (e) {
+      console.warn('Impossible de lire les champs visibles, aucun filtrage par visibilité :', e);
+    }
+
     // Parcourt les colonnes pour identifier les types "Choice", "Ref", "ChoiceList", "RefList"
     colTable.parentId.forEach((pid, i) => {
       if (pid !== parentRef) return;
@@ -82,6 +110,12 @@ document.addEventListener('click', (e) => {
       const label = colTable.label[i] || colId;
       const type  = colTable.type[i];
       if (!colId || colId.startsWith('gristHelper') || colId === 'manualSort') return;
+
+      // Ignore les colonnes techniquement cachées
+      if (colTable.isHiddenCol && colTable.isHiddenCol[i]) return;
+
+      // Ignore les colonnes masquées dans les vues
+      if (visibleColRefs && !visibleColRefs.has(colTable.id[i])) return;
 
       // Stocke les colonnes de type "Choice" ou "Ref" dans selectColumns
       if (type === 'Choice' || type.startsWith('Ref:')) {
@@ -125,7 +159,7 @@ document.addEventListener('click', (e) => {
     // Récupère l'ordre sauvegardé ou utilise un ordre par défaut
     const savedOrder = visibleFilters.order || [];
     const existing = new Set(savedOrder.map(o => o.col));
-    // Conserve l'ordre existant et ajoute les nouvelles colonnes à la fin
+    // Conserve l'ordre existant (sans les colonnes disparues/cachées) et ajoute les nouvelles à la fin
     columnsOrder = [
       ...savedOrder.filter(o => allCols.some(c => c.col === o.col)),
       ...allCols.filter(c => !existing.has(c.col)),
@@ -190,8 +224,7 @@ document.addEventListener('click', (e) => {
       const uniqueValues = [...new Set(records.flatMap(r => cleanVal(r[col])))];
       if (!selectedTags[col]) selectedTags[col] = [];
 
-      
-           const useDropdown = uniqueValues.length > DROPDOWN_THRESHOLD;
+      const useDropdown = uniqueValues.length > DROPDOWN_THRESHOLD;
       let ddToggle = null;
 
       // Met à jour le style des boutons "Tout" et "Aucun" (et le libellé du menu déroulant)
@@ -310,21 +343,6 @@ document.addEventListener('click', (e) => {
         applyFilters();
       });
 
-      // Écouteurs pour les boutons "Tout" et "Aucun"
-      btnAll.addEventListener('click', () => {
-        selectedTags[col] = [...uniqueValues];
-        row.querySelectorAll('.tag').forEach(t => t.classList.add('active'));
-        updateBtnStyles();
-        applyFilters();
-      });
-
-      btnNone.addEventListener('click', () => {
-        selectedTags[col] = [];
-        row.querySelectorAll('.tag').forEach(t => t.classList.remove('active'));
-        updateBtnStyles();
-        applyFilters();
-      });
-
       updateBtnStyles();
       wrapper.appendChild(row);
       tagContainer.appendChild(wrapper);
@@ -374,6 +392,11 @@ document.addEventListener('click', (e) => {
 
   // Applique tous les filtres (tags, selects, recherche globale)
   function applyFilters() {
+    // Supprime les sélections de tags des colonnes qui n'existent plus ou sont cachées
+    Object.keys(selectedTags).forEach(col => {
+      if (!tagColumns[col]) delete selectedTags[col];
+    });
+
     let filtered = [...allRecords];
 
     // Filtre par tags sélectionnés
@@ -405,7 +428,7 @@ document.addEventListener('click', (e) => {
     }
 
     // Met à jour le nombre de résultats et applique les filtres à Grist
-    resultsCount.textContent = `🔢 Résultats: ${filtered.length}`;
+    resultsCount.textContent = `Résultats: ${filtered.length}`;
     grist.setSelectedRows(filtered.map(r => r.id));
     updateDisabledOptions(filtered);
 
@@ -418,7 +441,7 @@ document.addEventListener('click', (e) => {
   // Met à jour les options désactivées (pour les valeurs non disponibles après filtrage)
   function updateDisabledOptions(filtered) {
     // Désactive les tags non disponibles
-        Object.keys(tagColumns).forEach(col => {
+    Object.keys(tagColumns).forEach(col => {
       const counts = countValues(filtered, col);
       tagContainer.querySelectorAll('.tag-group').forEach(group => {
         if (group.querySelector('.tag-title')?.textContent !== tagColumns[col]) return;
@@ -570,7 +593,7 @@ document.addEventListener('click', (e) => {
     filterCheckboxesContainer.addEventListener('drop', e => {
       e.preventDefault();
       const target = e.target.closest('[data-col]');
-      if (!target || target === dragEl) return;
+      if (!target || !dragEl || target === dragEl) return;
 
       const fromCol = dragEl.dataset.col;
       const toCol = target.dataset.col;
@@ -666,7 +689,7 @@ document.addEventListener('click', (e) => {
     initOrder();
     applyOrder();
 
-    resultsCount.textContent = `🔢 Résultats: ${allRecords.length}`;
+    resultsCount.textContent = `Résultats: ${allRecords.length}`;
     grist.setSelectedRows(allRecords.map(r => r.id));
 
     restoreState();
