@@ -104,6 +104,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
+    // Exclut toute colonne sans aucune valeur dans les enregistrements :
+    // c'est le cas d'une colonne cachée dans le widget (Grist n'envoie pas ses valeurs)
+    if (records && records.length > 0) {
+      const hasValues = (col) => records.some(r => cleanVal(r[col]).length > 0);
+      Object.keys(selectColumns).forEach(col => { if (!hasValues(col)) delete selectColumns[col]; });
+      Object.keys(tagColumns).forEach(col => { if (!hasValues(col)) delete tagColumns[col]; });
+    }
+
     // Initialise la visibilité des filtres pour toutes les colonnes
     Object.keys(selectColumns).forEach(col => {
       if (visibleFilters[col] === undefined) visibleFilters[col] = true;
@@ -666,7 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initOrder();
     applyOrder();
 
-    resultsCount.textContent = `🔢 Résultats: ${allRecords.length}`;
+    resultsCount.textContent = `Résultats: ${allRecords.length}`;
     grist.setSelectedRows(allRecords.map(r => r.id));
 
     restoreState();
