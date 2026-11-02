@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // Récupère les colonnes et leurs types depuis les tables Grist
-  async function fetchColumnsAndTypes() {
+  async function fetchColumnsAndTypes(records) {
     // Récupère la table des colonnes
     const colTable = await grist.docApi.fetchTable('_grist_Tables_column');
     // Récupère la table des tables
@@ -75,39 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const parentRef = tableRef.id[tableIdx];
 
-    // ===== Colonnes visibles dans les widgets de la table =====
-    // Une colonne masquée dans un widget n'a simplement pas de "champ" dans la section.
-    // On récupère donc les champs des sections (hors données brutes et hors ce widget personnalisé).
-    let visibleColRefs = null; // null = pas de filtrage par visibilité (repli)
-    try {
-      const sectionTable = await grist.docApi.fetchTable('_grist_Views_section');
-      const fieldTable   = await grist.docApi.fetchTable('_grist_Views_section_field');
-
-      const rawSectionId = tableRef.rawViewSectionRef ? tableRef.rawViewSectionRef[tableIdx] : null;
-
-      // Toutes les sections de la table, hors données brutes
-      const tableSections = sectionTable.id
-        .map((id, i) => ({ id, parentKey: sectionTable.parentKey[i], tableRef: sectionTable.tableRef[i] }))
-        .filter(s => s.tableRef === parentRef && s.id !== rawSectionId);
-
-      // Colonnes ayant un champ dans un ensemble de sections
-      const colsOf = (sections) => {
-        const ids = new Set(sections.map(s => s.id));
-        return new Set(fieldTable.colRef.filter((_, i) => ids.has(fieldTable.parentId[i])));
-      };
-
-      // 1) On privilégie les widgets personnalisés (ce widget) : ses colonnes cachées sont celles à exclure
-      const customCols = colsOf(tableSections.filter(s => s.parentKey === 'custom'));
-      // 2) Sinon on se rabat sur l'ensemble des widgets de la table
-      const allCols = colsOf(tableSections);
-
-      if (customCols.size > 0) visibleColRefs = customCols;
-      else if (allCols.size > 0) visibleColRefs = allCols;
-
-      console.log('Colonnes visibles (colRef) :', visibleColRefs ? [...visibleColRefs] : 'aucun filtrage');
-    } catch (e) {
-      console.warn('Impossible de lire les champs visibles, aucun filtrage par visibilité :', e);
-    }
+    // ===== Colonnes visibles =====
+    // Grist n'envoie dans les enregistrements que les colonnes visibles du widget :
+    // une colonne cachée n'a donc pas de clé dans les enregistrements.
+    const recordKeys = records && records.length > 0 ? new Set(Object.keys(records[0])) : null;
 
     // Parcourt les colonnes pour identifier les types "Choice", "Ref", "ChoiceList", "RefList"
     colTable.parentId.forEach((pid, i) => {
@@ -120,8 +91,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Ignore les colonnes techniquement cachées
       if (colTable.isHiddenCol && colTable.isHiddenCol[i]) return;
 
-      // Ignore les colonnes masquées dans les vues
-      if (visibleColRefs && !visibleColRefs.has(colTable.id[i])) return;
+      // Ignore les colonnes absentes des enregistrements (= cachées dans le widget)
+      if (recordKeys && !recordKeys.has(colId)) return;
 
       // Stocke les colonnes de type "Choice" ou "Ref" dans selectColumns
       if (type === 'Choice' || type.startsWith('Ref:')) {
@@ -687,7 +658,7 @@ document.addEventListener('DOMContentLoaded', () => {
     selectColumns = {};
 
     try {
-      await fetchColumnsAndTypes();
+      await fetchColumnsAndTypes(records);
     } catch (error) {
       console.error('Impossible de récupérer les métadonnées :', error);
     }
