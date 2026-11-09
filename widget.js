@@ -3,16 +3,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // Variables globales
   let allRecords = [];          // Stocke tous les enregistrements récupérés depuis Grist
   let selectedTags = {};        // Stocke les tags sélectionnés pour chaque colonne de type "tag"
+  let selectedTexts = {};       // Stocke le texte de recherche pour chaque colonne de type "text"
   let selectEls = {};           // Stocke les éléments <select> pour chaque colonne de type "select"
+  let textEls = {};             // Stocke les éléments <input> pour chaque colonne de type "text"
   const STORAGE_KEY = 'grist_filters_state'; // Clé pour sauvegarder l'état des filtres dans localStorage
   const DROPDOWN_THRESHOLD = 10; // Au-delà, on affiche une liste déroulante
   let tagColumns = {};          // Stocke les colonnes de type "tag" (ChoiceList ou RefList)
   let selectColumns = {};       // Stocke les colonnes de type "select" (Choice ou Ref)
+  let textColumns = {};         // Stocke les colonnes de type "text" (Text ou Note)
   let visibleFilters = { tags: true }; // Stocke la visibilité des filtres (par défaut, les tags sont visibles)
-  let columnsOrder = [];        // Stocke l'ordre des colonnes (tags + selects) pour l'affichage
+  let columnsOrder = [];        // Stocke l'ordre des colonnes (tags + selects + textes) pour l'affichage
 
   // Références aux éléments du DOM
   const tagContainer = document.getElementById('tag-filters');          // Conteneur pour les filtres de type "tag"
+  const textContainer = document.getElementById('text-filters');        // Conteneur pour les filtres de type "text"
   const selectContainer = document.getElementById('dynamic-filters');   // Conteneur pour les filtres de type "select"
   const globalSearch = document.getElementById('global-search');        // Champ de recherche globale
   const resultsCount = document.getElementById('results-count');        // Affichage du nombre de résultats
@@ -40,6 +44,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Retourne un tableau avec la valeur si elle existe, sinon un tableau vide
     return v ? [String(v)] : [];
   };
+
+  // Sauvegarde l'état courant des filtres dans localStorage
+  function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      selectedTags, selectedTexts, selectEls: serializeSelects(), visibleFilters
+    }));
+  }
 
   // Récupère les colonnes et leurs types depuis les tables Grist
   async function fetchColumnsAndTypes(records) {
@@ -80,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // une colonne cachée n'a donc pas de clé dans les enregistrements.
     const recordKeys = records && records.length > 0 ? new Set(Object.keys(records[0])) : null;
 
-    // Parcourt les colonnes pour identifier les types "Choice", "Ref", "ChoiceList", "RefList"
+    // Parcourt les colonnes pour identifier les types "Choice", "Ref", "ChoiceList", "RefList", "Text", "Note"
     colTable.parentId.forEach((pid, i) => {
       if (pid !== parentRef) return;
       const colId = colTable.colId[i];
@@ -102,6 +113,10 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (type === 'ChoiceList' || type.startsWith('RefList:')) {
         tagColumns[colId] = label;
       }
+      // Stocke les colonnes de type "Text" ou "Note" dans textColumns
+      else if (type === 'Text' || type === 'Note') {
+        textColumns[colId] = label;
+      }
     });
 
     // Exclut toute colonne sans aucune valeur dans les enregistrements :
@@ -110,6 +125,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const hasValues = (col) => records.some(r => cleanVal(r[col]).length > 0);
       Object.keys(selectColumns).forEach(col => { if (!hasValues(col)) delete selectColumns[col]; });
       Object.keys(tagColumns).forEach(col => { if (!hasValues(col)) delete tagColumns[col]; });
+      Object.keys(textColumns).forEach(col => {
+        if (!records.some(r => r[col] !== null && r[col] !== undefined && String(r[col]) !== '')) delete textColumns[col];
+      });
     }
 
     // Initialise la visibilité des filtres pour toutes les colonnes
@@ -119,8 +137,11 @@ document.addEventListener('DOMContentLoaded', () => {
     Object.keys(tagColumns).forEach(col => {
       if (visibleFilters[col] === undefined) visibleFilters[col] = true;
     });
+    Object.keys(textColumns).forEach(col => {
+      if (visibleFilters[col] === undefined) visibleFilters[col] = true;
+    });
 
-    console.log('select:', selectColumns, 'tags:', tagColumns);
+    console.log('select:', selectColumns, 'tags:', tagColumns, 'text:', textColumns);
   }
 
   // Compte les occurrences de chaque valeur pour une colonne donnée
@@ -136,10 +157,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialise l'ordre des colonnes si ce n'est pas déjà fait
   function initOrder() {
-    // Crée une liste de toutes les colonnes (tags et selects)
+    // Crée une liste de toutes les colonnes (tags, selects et textes)
     const allCols = [
       ...Object.keys(tagColumns).map(col => ({ col, type: 'tag' })),
       ...Object.keys(selectColumns).map(col => ({ col, type: 'select' })),
+      ...Object.keys(textColumns).map(col => ({ col, type: 'text' })),
     ];
     // Récupère l'ordre sauvegardé ou utilise un ordre par défaut
     const savedOrder = visibleFilters.order || [];
@@ -157,6 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initOrder();
     renderTags(allRecords);
     renderSelects(allRecords);
+    renderTexts(allRecords);
   }
 
   // Affiche les filtres de type "tag" dans le DOM
@@ -334,6 +357,47 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Affiche les filtres de type "text" (champ de recherche libre) dans le DOM
+  function renderTexts(records) {
+    if (!textContainer) return;
+    textContainer.innerHTML = '';
+    textEls = {};
+
+    // Filtre les colonnes de type "text" selon l'ordre défini
+    const textOrder = columnsOrder.filter(o => o.type === 'text');
+
+    textOrder.forEach(({ col }) => {
+      const label = textColumns[col];
+      if (!label) return;
+      if (visibleFilters[col] === false) return;
+
+      // Crée un conteneur pour le filtre
+      const wrapper = document.createElement('div');
+      wrapper.className = 'filter-card';
+
+      // Titre du filtre
+      const title = document.createElement('div');
+      title.className = 'filter-title';
+      title.textContent = label;
+
+      // Champ de recherche texte
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'filter-text';
+      input.placeholder = `Rechercher dans ${label}...`;
+      input.value = selectedTexts[col] || '';
+      input.addEventListener('input', () => {
+        selectedTexts[col] = input.value;
+        applyFilters();
+      });
+
+      wrapper.appendChild(title);
+      wrapper.appendChild(input);
+      textContainer.appendChild(wrapper);
+      textEls[col] = input;
+    });
+  }
+
   // Affiche les filtres de type "select" dans le DOM
   function renderSelects(records) {
     selectContainer.innerHTML = '';
@@ -375,7 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Applique tous les filtres (tags, selects, recherche globale)
+  // Applique tous les filtres (tags, textes, selects, recherche globale)
   function applyFilters() {
     // Supprime les sélections de tags des colonnes qui n'existent plus ou sont cachées
     Object.keys(selectedTags).forEach(col => {
@@ -389,6 +453,16 @@ document.addEventListener('DOMContentLoaded', () => {
       const vals = selectedTags[col];
       if (vals && vals.length > 0) {
         filtered = filtered.filter(r => cleanVal(r[col]).some(v => vals.includes(v)));
+      }
+    });
+
+    // Filtre par recherche texte par colonne
+    Object.keys(textEls).forEach(col => {
+      const q = (selectedTexts[col] || '').toLowerCase().trim();
+      if (q) {
+        filtered = filtered.filter(r =>
+          String(r[col] ?? '').toLowerCase().includes(q)
+        );
       }
     });
 
@@ -418,9 +492,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateDisabledOptions(filtered);
 
     // Sauvegarde l'état des filtres
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      selectedTags, selectEls: serializeSelects(), visibleFilters
-    }));
+    saveState();
   }
 
   // Met à jour les options désactivées (pour les valeurs non disponibles après filtrage)
@@ -471,17 +543,24 @@ document.addEventListener('DOMContentLoaded', () => {
       if (col) group.style.display = visibleFilters[col] !== false ? 'block' : 'none';
     });
 
+    // Affiche/masque chaque filtre texte individuellement
+    if (textContainer) {
+      textContainer.querySelectorAll('.filter-card').forEach(card => {
+        const titleText = card.querySelector('.filter-title')?.textContent;
+        const col = Object.entries(textColumns).find(([_, label]) => label === titleText)?.[0];
+        if (col) card.style.display = visibleFilters[col] !== false ? 'block' : 'none';
+      });
+    }
+
     // Affiche/masque chaque filtre de type "select"
-    document.querySelectorAll('.filter-card').forEach(card => {
+    document.querySelectorAll('#dynamic-filters .filter-card').forEach(card => {
       const titleText = card.querySelector('.filter-title')?.textContent;
       const col = Object.entries(selectColumns).find(([_, label]) => label === titleText)?.[0];
       if (col) card.style.display = visibleFilters[col] !== false ? 'block' : 'none';
     });
 
     // Sauvegarde l'état
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      selectedTags, selectEls: serializeSelects(), visibleFilters
-    }));
+    saveState();
   }
 
   // Affiche les cases à cocher pour gérer la visibilité et l'ordre des filtres
@@ -496,7 +575,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Crée une case à cocher pour chaque colonne
     columnsOrder.forEach(({ col, type }) => {
-      const label = type === 'tag' ? tagColumns[col] : selectColumns[col];
+      const label = type === 'tag' ? tagColumns[col]
+                  : type === 'select' ? selectColumns[col]
+                  : textColumns[col];
       if (!label) return;
 
       const div = document.createElement('div');
@@ -511,9 +592,10 @@ document.addEventListener('DOMContentLoaded', () => {
       handle.textContent = '⠿';
       handle.style.cssText = 'color:var(--color-text-tertiary);font-size:1.1em;flex-shrink:0;';
 
-      // Badge pour indiquer le type (tag ou filtre)
+      // Badge pour indiquer le type (tag, filtre ou texte)
       const badge = document.createElement('span');
-      badge.textContent = type === 'tag' ? 'tag' : 'filtre';
+      const badgeLabel = { tag: 'tag', select: 'filtre', text: 'texte' }[type];
+      badge.textContent = badgeLabel;
       badge.style.cssText = `font-size:0.7em;padding:1px 5px;border-radius:3px;flex-shrink:0;
         background:${type === 'tag' ? 'var(--color-background-info)' : 'var(--color-background-secondary)'};
         color:${type === 'tag' ? 'var(--color-text-info)' : 'var(--color-text-secondary)'};`;
@@ -525,7 +607,7 @@ document.addEventListener('DOMContentLoaded', () => {
       checkbox.checked = visibleFilters[col] !== false;
       checkbox.addEventListener('change', e => {
         visibleFilters[col] = e.target.checked;
-        renderTags(allRecords);
+        applyOrder();           // rafraîchit tags + selects + textes
         updateFilterVisibility();
       });
 
@@ -592,9 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
       visibleFilters.order = columnsOrder;
 
       // Sauvegarde et rafraîchit l'affichage
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        selectedTags, selectEls: serializeSelects(), visibleFilters
-      }));
+      saveState();
 
       renderFilterCheckboxes();
       applyOrder();
@@ -608,11 +688,20 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const state = JSON.parse(saved);
       selectedTags = state.selectedTags || {};
+      selectedTexts = state.selectedTexts || {};
       if (state.visibleFilters) visibleFilters = state.visibleFilters;
+      // Réapplique les valeurs après le rendu des filtres
+      renderTags(allRecords);
+      renderSelects(allRecords);
+      renderTexts(allRecords);
       Object.entries(state.selectEls || {}).forEach(([col, val]) => {
         if (selectEls[col]) selectEls[col].value = val;
       });
+      Object.entries(selectedTexts).forEach(([col, val]) => {
+        if (textEls[col]) textEls[col].value = val;
+      });
       updateFilterVisibility();
+      applyFilters();
     } catch (e) {
       console.error('Erreur restauration état :', e);
     }
@@ -621,9 +710,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // Écouteurs d'événements
   resetButton.addEventListener('click', () => {
     selectedTags = {};
+    selectedTexts = {};
     Object.values(selectEls).forEach(sel => sel.value = '');
+    Object.values(textEls).forEach(inp => inp.value = '');
     globalSearch.value = '';
     renderTags(allRecords);
+    renderTexts(allRecords);
     applyFilters();
   });
 
@@ -640,7 +732,8 @@ document.addEventListener('DOMContentLoaded', () => {
     visibleFilters.tags = true;
     Object.keys(selectColumns).forEach(col => { visibleFilters[col] = true; });
     Object.keys(tagColumns).forEach(col => { visibleFilters[col] = true; });
-    renderTags(allRecords);
+    Object.keys(textColumns).forEach(col => { visibleFilters[col] = true; });
+    applyOrder();
     updateFilterVisibility();
     renderFilterCheckboxes();
   });
@@ -649,7 +742,8 @@ document.addEventListener('DOMContentLoaded', () => {
     visibleFilters.tags = false;
     Object.keys(selectColumns).forEach(col => { visibleFilters[col] = false; });
     Object.keys(tagColumns).forEach(col => { visibleFilters[col] = false; });
-    renderTags(allRecords);
+    Object.keys(textColumns).forEach(col => { visibleFilters[col] = false; });
+    applyOrder();
     updateFilterVisibility();
     renderFilterCheckboxes();
   });
@@ -664,6 +758,7 @@ document.addEventListener('DOMContentLoaded', () => {
     allRecords = records;
     tagColumns = {};
     selectColumns = {};
+    textColumns = {};
 
     try {
       await fetchColumnsAndTypes(records);

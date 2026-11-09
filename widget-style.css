@@ -372,3 +372,11 @@ button {
   opacity: 0.35;
   pointer-events: none;
 }
+.filter-text {
+  width: 100%;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border-secondary);
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+}
