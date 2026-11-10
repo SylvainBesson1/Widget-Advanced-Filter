@@ -44,6 +44,10 @@ document.addEventListener('DOMContentLoaded', () => {
     return v ? [String(v)] : [];
   };
 
+  // Tri alphanumérique naturel (insensible à la casse, "item2" < "item10")
+  const sortAlphaNum = (arr) => arr.sort((a, b) => a.localeCompare(b, undefined, {
+    numeric: true, sensitivity: 'base' }));
+
   // Sauvegarde l'état courant des filtres dans localStorage
   function saveState() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -200,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const row = document.createElement('div');
       row.className = 'tag-row';
 
-      const uniqueValues = [...new Set(records.flatMap(r => cleanVal(r[col])))];
+      const uniqueValues = sortAlphaNum([...new Set(records.flatMap(r => cleanVal(r[col])))]);
       if (!selectedTags[col]) selectedTags[col] = [];
 
       const useDropdown = uniqueValues.length > DROPDOWN_THRESHOLD;
@@ -363,16 +367,15 @@ document.addEventListener('DOMContentLoaded', () => {
         textEls[col] = input;
       }
 
-      // ===== Mode liste déroulante (valeurs uniques) =====
+      // ===== Mode liste déroulante (valeurs uniques, tri alphanumérique) =====
       if (mode === 'dropdown' || mode === 'both') {
         const select = document.createElement('select');
         select.className = 'filter-multi';
         select.appendChild(new Option('— Tous —', ''));
 
         const counts = countValues(records, col);
-        Object.entries(counts)
-          .sort((a, b) => b[1] - a[1])
-          .forEach(([val, count]) => select.appendChild(new Option(`${val} (${count})`, val)));
+        sortAlphaNum(Object.keys(counts))
+          .forEach(val => select.appendChild(new Option(`${val} (${counts[val]})`, val)));
 
         select.addEventListener('change', applyFilters);
         wrapper.appendChild(select);
@@ -383,7 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Affiche les filtres de type "select" dans le DOM
+  // Affiche les filtres de type "select" dans le DOM (tri alphanumérique)
   function renderSelects(records) {
     selectContainer.innerHTML = '';
     selectEls = {};
@@ -406,9 +409,8 @@ document.addEventListener('DOMContentLoaded', () => {
       select.appendChild(new Option('— Tous —', ''));
 
       const counts = countValues(records, col);
-      Object.entries(counts)
-        .sort((a, b) => b[1] - a[1])
-        .forEach(([val, count]) => select.appendChild(new Option(`${val} (${count})`, val)));
+      sortAlphaNum(Object.keys(counts))
+        .forEach(val => select.appendChild(new Option(`${val} (${counts[val]})`, val)));
 
       select.addEventListener('change', applyFilters);
       wrapper.appendChild(title);
