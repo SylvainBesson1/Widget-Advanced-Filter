@@ -17,7 +17,7 @@ Ce widget permet d'ajouter des filtres dynamiques et personnalisables à vos doc
 
 1. **Copiez l'adresse du widget**
 
-[https://sylvainbesson1.github.io/Widget-drop-down-filter/
+[https://sylvainbesson1.github.io/Widget-Advanced-Filter/
 ](https://sylvainbesson1.github.io/Widget-Advanced-Filter)
 
 2. **Colles l'adresse d'adresse dans les widgets personnalisées** :
